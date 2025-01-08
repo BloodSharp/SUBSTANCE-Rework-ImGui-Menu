@@ -54,6 +54,9 @@
     <ClCompile Include="imgui-substance-views.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="imgui-substance-aimbot-view.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ImGui\imconfig.h">
@@ -87,6 +90,9 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="imgui-substance-views.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui-substance-aimbot-view.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>

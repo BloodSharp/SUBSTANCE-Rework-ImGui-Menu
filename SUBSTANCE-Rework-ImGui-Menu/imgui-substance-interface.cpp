@@ -229,6 +229,7 @@ void NavigationSection(float width)
         float buttonWidth = width - 2 * marginX;
         ImVec2 buttonSize = ImVec2(buttonWidth, 45);
 
+        // foreach (var view in Views)
         for (IView* view : Views)
         {
             bool isChecked = view->m_bChecked;

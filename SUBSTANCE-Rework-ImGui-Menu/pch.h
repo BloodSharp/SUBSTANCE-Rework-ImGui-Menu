@@ -10,4 +10,5 @@
 #include <vector>
 
 #include "imgui-substance-views.h"
+#include "imgui-substance-aimbot-view.h"
 #include "imgui-substance-interface.h"

@@ -181,6 +181,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="imgui-substance-aimbot-view.cpp" />
     <ClCompile Include="imgui-substance-interface.cpp" />
     <ClCompile Include="imgui-substance-views.cpp" />
     <ClCompile Include="main.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="..\ImGui\imstb_rectpack.h" />
     <ClInclude Include="..\ImGui\imstb_textedit.h" />
     <ClInclude Include="..\ImGui\imstb_truetype.h" />
+    <ClInclude Include="imgui-substance-aimbot-view.h" />
     <ClInclude Include="imgui-substance-interface.h" />
     <ClInclude Include="imgui-substance-views.h" />
     <ClInclude Include="pch.h" />
