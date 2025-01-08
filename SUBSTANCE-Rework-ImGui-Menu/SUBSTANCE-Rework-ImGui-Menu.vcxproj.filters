@@ -19,6 +19,18 @@
     <Filter Include="Archivos de encabezado\ImGui">
       <UniqueIdentifier>{a9490d48-b4a6-4f17-bef5-d987c19e22c1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Archivos de origen\UI">
+      <UniqueIdentifier>{ab0a0d3b-135a-411b-9d8c-6cbac52a1e08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\UI\Widgets">
+      <UniqueIdentifier>{71265793-01c0-41c3-8581-d553b406d55c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de encabezado\UI">
+      <UniqueIdentifier>{2a414886-ba7f-469e-962f-1f9ea684493d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de encabezado\UI\Widgets">
+      <UniqueIdentifier>{05426d0f-db39-498c-819e-5b97f69d66a8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -57,6 +69,24 @@
     <ClCompile Include="imgui-substance-aimbot-view.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="HeaderBar.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="FunctionWidget.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="CheckWidget.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="ColorPickerWidget.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="ComboBoxWidget.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackBarWidget.cpp">
+      <Filter>Archivos de origen\UI\Widgets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ImGui\imconfig.h">
@@ -94,6 +124,24 @@
     </ClInclude>
     <ClInclude Include="imgui-substance-aimbot-view.h">
       <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="HeaderBar.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="FunctionWidget.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="CheckWidget.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="ColorPickerWidget.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="ComboBoxWidget.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackBarWidget.h">
+      <Filter>Archivos de encabezado\UI\Widgets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

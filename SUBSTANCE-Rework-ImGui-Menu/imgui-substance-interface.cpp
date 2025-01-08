@@ -279,6 +279,14 @@ void MainSection()
                 ImGui::Text("Vista no encontrada.");
             }
             */
+            
+            for (IView* view : Views)
+            { 
+                if (view->m_bChecked) {
+					view->Render();
+					break;
+                }
+            }
         }
         ImGui::EndChild();
     }

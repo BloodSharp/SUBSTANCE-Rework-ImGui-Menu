@@ -181,6 +181,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="CheckWidget.cpp" />
+    <ClCompile Include="ColorPickerWidget.cpp" />
+    <ClCompile Include="ComboBoxWidget.cpp" />
+    <ClCompile Include="FunctionWidget.cpp" />
+    <ClCompile Include="HeaderBar.cpp" />
     <ClCompile Include="imgui-substance-aimbot-view.cpp" />
     <ClCompile Include="imgui-substance-interface.cpp" />
     <ClCompile Include="imgui-substance-views.cpp" />
@@ -191,6 +196,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="TrackBarWidget.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ImGui\imconfig.h" />
@@ -201,10 +207,16 @@
     <ClInclude Include="..\ImGui\imstb_rectpack.h" />
     <ClInclude Include="..\ImGui\imstb_textedit.h" />
     <ClInclude Include="..\ImGui\imstb_truetype.h" />
+    <ClInclude Include="CheckWidget.h" />
+    <ClInclude Include="ColorPickerWidget.h" />
+    <ClInclude Include="ComboBoxWidget.h" />
+    <ClInclude Include="FunctionWidget.h" />
+    <ClInclude Include="HeaderBar.h" />
     <ClInclude Include="imgui-substance-aimbot-view.h" />
     <ClInclude Include="imgui-substance-interface.h" />
     <ClInclude Include="imgui-substance-views.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="TrackBarWidget.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
