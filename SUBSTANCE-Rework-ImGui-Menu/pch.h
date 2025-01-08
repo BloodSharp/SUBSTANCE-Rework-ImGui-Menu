@@ -21,8 +21,12 @@
 
 //Widgets
 
-#include "HeaderBar.h" 
-#include "FunctionWidget.h"
+#include "HeaderBar.h"           // Clase HeaderBar (C++)
+#include "FunctionWidget.h"      // Clase FunctionWidget (C++)
+#include "ComboBoxWidget.h"      // Clase ComboBoxWidget (C++)
+#include "TrackBarWidget.h"      // Clase TrackBarWidget (C++)
+#include "ColorPickerWidget.h"   // Clase ColorPickerWidget (C++)
+#include "CheckWidget.h"         // Clase CheckWidget (C++)
 
 #include "imgui-substance-views.h"
 #include "imgui-substance-aimbot-view.h"
