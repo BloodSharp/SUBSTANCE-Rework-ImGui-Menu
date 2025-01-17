@@ -302,7 +302,7 @@ void TitleBar()
     // --- Barra del Título ---
     ImGui::SetCursorPos(ImVec2(0, 0)); // Coloca la posición inicial
     ImGui::PushStyleColor(ImGuiCol_ChildBg, titleBarColor); // Color de la barra
-    if (ImGui::BeginChild("TitleBar", ImVec2(windowSize.x, titleBarHeight), ImGuiWindowFlags_NoScrollbar))
+    if (ImGui::BeginChild("TitleBar", ImVec2(windowSize.x, titleBarHeight), ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
     {
         // Centramos el texto verticalmente
         float textHeight = ImGui::CalcTextSize("SUBSTANCE 2.0").y;
@@ -358,7 +358,7 @@ void Interface::Menu::Render()
         ImGui::SetNextWindowSize(Gui_Size, ImGuiCond_Once);
 
         ImGui::PushStyleColor(ImGuiCol_WindowBg, backgroundColor); // Color del fondo
-        ImGui::Begin("Background", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
+        ImGui::Begin("Background", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
         // Llamamos a las secciones individuales
         TitleBar();

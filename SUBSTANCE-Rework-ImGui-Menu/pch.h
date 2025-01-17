@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ImGui/imgui.h"
+#include "../ImGui/imgui_internal.h"
 #include "../ImGui/imgui_impl_dx9.h"
 #include "../ImGui/imgui_impl_win32.h"
 #include <d3d9.h>
@@ -27,6 +28,8 @@
 #include "TrackBarWidget.h"      // Clase TrackBarWidget (C++)
 #include "ColorPickerWidget.h"   // Clase ColorPickerWidget (C++)
 #include "CheckWidget.h"         // Clase CheckWidget (C++)
+
+#include "Substance-Widgets.h"
 
 #include "imgui-substance-views.h"
 #include "imgui-substance-aimbot-view.h"

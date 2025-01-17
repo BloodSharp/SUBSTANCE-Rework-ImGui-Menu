@@ -196,6 +196,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Substancer-Widgets.cpp" />
     <ClCompile Include="TrackBarWidget.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -216,6 +217,7 @@
     <ClInclude Include="imgui-substance-interface.h" />
     <ClInclude Include="imgui-substance-views.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Substance-Widgets.h" />
     <ClInclude Include="TrackBarWidget.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

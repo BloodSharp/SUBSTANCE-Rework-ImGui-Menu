@@ -87,6 +87,9 @@
     <ClCompile Include="TrackBarWidget.cpp">
       <Filter>Archivos de origen\UI\Widgets</Filter>
     </ClCompile>
+    <ClCompile Include="Substancer-Widgets.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ImGui\imconfig.h">
@@ -142,6 +145,9 @@
     </ClInclude>
     <ClInclude Include="TrackBarWidget.h">
       <Filter>Archivos de encabezado\UI\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Substance-Widgets.h">
+      <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
