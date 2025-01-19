@@ -63,28 +63,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="imgui-substance-views.cpp">
-      <Filter>Archivos de origen</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui-substance-aimbot-view.cpp">
-      <Filter>Archivos de origen</Filter>
-    </ClCompile>
     <ClCompile Include="HeaderBar.cpp">
-      <Filter>Archivos de origen\UI\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="FunctionWidget.cpp">
-      <Filter>Archivos de origen\UI\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="CheckWidget.cpp">
-      <Filter>Archivos de origen\UI\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="ColorPickerWidget.cpp">
-      <Filter>Archivos de origen\UI\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="ComboBoxWidget.cpp">
-      <Filter>Archivos de origen\UI\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="TrackBarWidget.cpp">
       <Filter>Archivos de origen\UI\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="Substancer-Widgets.cpp">
@@ -122,28 +101,7 @@
     <ClInclude Include="pch.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="imgui-substance-views.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui-substance-aimbot-view.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="HeaderBar.h">
-      <Filter>Archivos de encabezado\UI\Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="FunctionWidget.h">
-      <Filter>Archivos de encabezado\UI\Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="CheckWidget.h">
-      <Filter>Archivos de encabezado\UI\Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="ColorPickerWidget.h">
-      <Filter>Archivos de encabezado\UI\Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="ComboBoxWidget.h">
-      <Filter>Archivos de encabezado\UI\Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="TrackBarWidget.h">
       <Filter>Archivos de encabezado\UI\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="Substance-Widgets.h">
