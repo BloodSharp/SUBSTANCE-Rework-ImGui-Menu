@@ -1141,13 +1141,15 @@ void CombatLeftSection()
 void CombatRightSection()
 {
     static int opcion = 0;
+    static int opcionSlider = 50;
+    static float floatSliders[2] = {25.f,200.f};
     ImGui::BeginGroup();
     SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
-    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
-    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
-    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
-    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
-    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_11", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_12", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_13", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_14", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_15", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
     SUBSTANCE::CheckBox("Ejemplo##ID_TRES", "Ejemplo3", &bEjemplo3);
     SUBSTANCE::CheckBox("Ejemplo##ID_CUATRO", "Ejemplo4", &bEjemplo4);
     SUBSTANCE::CheckBox("Ejemplo##ID_SEIS", "Ejemplo5", &bEjemplo5);
@@ -1158,16 +1160,30 @@ void CombatRightSection()
 
     ImGui::SameLine();
     ImGui::BeginGroup();
-    SUBSTANCE::CheckBox("Ejemplo##ID_DIEZ", "Ejemplo3", &bEjemplo3);
+    SUBSTANCE::SliderFloat2("Combobox##ID_16", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_17", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_18", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_19", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_20", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_21", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_22", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_23", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_24", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_25", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_26", "Combobox ejemplo", floatSliders, 0, 5000);
+    SUBSTANCE::SliderFloat2("Combobox##ID_27", "Combobox ejemplo", floatSliders, 0, 5000);
+    ImGui::EndGroup();
+
+    static float fX = 1920.f / 2.f;
+    static float fY = 1080.f / 2.f;
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    SUBSTANCE::QuandFloat("QUAD##ID_DIEZ", "Ejemplo3", &fX, &fY, 0, 500, 0, 300);
     SUBSTANCE::CheckBox("Ejemplo##ID_ONCE", "Ejemplo4", &bEjemplo4);
     SUBSTANCE::CheckBox("Ejemplo##ID_DOCE", "Ejemplo5", &bEjemplo5);
     SUBSTANCE::CheckBox("Ejemplo##ID_TRECE", "Ejemplo5", &bEjemplo5);
     SUBSTANCE::CheckBox("Ejemplo##ID_CATORCE", "Ejemplo5", &bEjemplo5);
     SUBSTANCE::CheckBox("Ejemplo##ID_QUINCE", "Ejemplo5", &bEjemplo5);
-    ImGui::EndGroup();
-
-    ImGui::SameLine();
-    ImGui::BeginGroup();
     SUBSTANCE::CheckBox("Ejemplo##ID_DIECISEIS", "Ejemplo3", &bEjemplo3);
     SUBSTANCE::CheckBox("Ejemplo##ID_DIECISIETE", "Ejemplo4", &bEjemplo4);
     SUBSTANCE::CheckBox("Ejemplo##ID_DIECIOCHO", "Ejemplo5", &bEjemplo5);
