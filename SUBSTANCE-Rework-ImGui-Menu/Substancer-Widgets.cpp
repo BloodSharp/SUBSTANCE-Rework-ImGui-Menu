@@ -1501,12 +1501,12 @@ bool SUBSTANCE::ColorPicker4(const char* label, float col[4], ImGuiColorEditFlag
 
 	ImGui::PopID();
 
-	ImGui::Dummy(ImVec2(0.f, 8.f));
+	ImGui::Dummy(ImVec2(0.f, 12.f));
 
 	return value_changed;
 }
 
-bool SUBSTANCE::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags)
+bool SUBSTANCE::ColorEdit4(const char* label, const char* szDescription, float col[4], ImGuiColorEditFlags flags)
 {
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	if (window->SkipItems)
@@ -1516,6 +1516,12 @@ bool SUBSTANCE::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags 
 
 	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
+	const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+	const ImVec2 description_size = ImGui::CalcTextSize(szDescription, NULL, true);
+	const float MarginX = 15.f;
+	const float MarginY = 10.f;
+	const float lineHeight = ImGui::GetTextLineHeight();
+	const float descriptionTopOffset = lineHeight + (MarginY * 0.5f);
 	const float square_sz = ImGui::GetFrameHeight();
 	const float w_full = ImGui::CalcItemWidth();
 	const float w_button = (flags & ImGuiColorEditFlags_NoSmallPreview) ? 0.0f : (square_sz + style.ItemInnerSpacing.x);
@@ -1679,23 +1685,46 @@ bool SUBSTANCE::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags 
 			if (g.CurrentWindow->BeginCount == 1)
 			{
 				picker_active_window = g.CurrentWindow;
-				ImGui::GetWindowDrawList()->AddRectFilled(pos, pos + ImVec2(190.f, 175.f), ImColor(background));
+				const ImVec2 Size = ImVec2(190.f, 175.f);
+				ImGui::GetWindowDrawList()->AddRectFilled(pos, pos + ImVec2(190.f, 180.f), ImColor(background));
 
+				ImVec2 cursorBackup = ImGui::GetCursorPos();
+
+				// Título
+				ImGui::SetCursorPos(ImVec2(pos.x + MarginX, pos.y + MarginY));
+				ImGui::PushFont(SUBSTANCE::pFont15);
+				ImGui::PushStyleColor(ImGuiCol_Text, text_active);
+				ImGui::RenderTextClipped(ImVec2(pos.x + style.FramePadding.x + 10.0f, pos.y + style.FramePadding.y + 7.0f), pos + Size - style.FramePadding, label, 0, &label_size);
+				ImGui::PopStyleColor();
+				ImGui::PopFont();
+
+				// Descripción
+				ImGui::SetCursorPos(ImVec2(pos.x + MarginX, pos.y + MarginY + descriptionTopOffset));
+				ImGui::PushFont(SUBSTANCE::pFont10Light);
+				ImGui::PushStyleColor(ImGuiCol_Text, text_active);
+				ImGui::RenderTextClipped(ImVec2(pos.x + style.FramePadding.x + 10.0f, pos.y + style.FramePadding.y + 7.0f + descriptionTopOffset), pos + Size - style.FramePadding, szDescription, 0, &description_size);
+				//ImGui::RenderTextClipped(ImVec2(rect.Min.x + style.FramePadding.x + 10.0f, rect.Min.y + style.FramePadding.y + 7.0f + descriptionTopOffset), rect.Max - style.FramePadding, description, 0, &description_size);
+				ImGui::PopStyleColor();
+				ImGui::PopFont();
+				/*
 				ImGui::Dummy(ImVec2(0, 5.f));
 				ImGui::Dummy(ImVec2(8.f, 0.f));
 				ImGui::SameLine();
 				ImGui::BeginGroup();
 
-				float wrapPos = 190.f - 15.f;
+				//float wrapPos = 190.f - 15.f;
 				//ImGui::PushTextWrapPos(wrapPos);
 				ImGui::PushFont(SUBSTANCE::pFont15);
-				ImGui::Text(label);
+				//ImGui::RenderTextClipped(pos + ImVec2(MarginX));
+				ImGui::TextEx(label,0, ImGuiTextFlags_None);
 				ImGui::PopFont();
 				ImGui::PushFont(SUBSTANCE::pFont10Light);
 				//ImGui::TextWrapped("Description sample Description sample Description sample");
-				ImGui::Text("Description sample");
+				ImGui::Text(szDescription);
 				ImGui::PopFont();
 				ImGui::EndGroup();
+				*/
+				ImGui::SetCursorPos(ImVec2(cursorBackup.x, cursorBackup.y + 2.f * MarginY + 15.f + 10.f));
 
 				ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar;
 				ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
