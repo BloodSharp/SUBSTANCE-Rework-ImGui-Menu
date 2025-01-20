@@ -1143,7 +1143,9 @@ void CombatRightSection()
     static int opcion = 0;
     static int opcionSlider = 50;
     static float floatSliders[2] = {25.f,200.f};
+    static float flColor[4] = { 1.f,1.f,1.f,1.f };
     ImGui::BeginGroup();
+    SUBSTANCE::ColorEdit4("ColorEdit", flColor, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaPreview);
     SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
     SUBSTANCE::ComboBox("Combobox##ID_11", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
     SUBSTANCE::ComboBox("Combobox##ID_12", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");

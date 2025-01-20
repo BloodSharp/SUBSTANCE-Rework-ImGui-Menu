@@ -26,4 +26,6 @@ namespace SUBSTANCE
 	bool ColorPicker(const char* szTextAndAlsoID, const char* szDescription, ImVec4* pColor);
 	bool QuandFloat(const char* label, const char* description, float* v0, float* v1, float v_min0 = 0.0f, float v_max0 = 0.0f, float v_min1 = 0.0f, float v_max1 = 0.0f, const char* format0 = "%.2f", const char* format1 = "%.2f", ImGuiSliderFlags flags = 0);
 	bool QuandInt(const char* label, const char* description, int* v0, int* v1, int v_min0 = 0, int v_max0 = 0, int v_min1 = 0, int v_max1 = 0, const char* format0 = "%d", const char* format1 = "%d", ImGuiSliderFlags flags = 0);
+	bool ColorPicker4(const char* label, float col[4], ImGuiColorEditFlags flags = 0, const float* ref_col = 0);
+	bool ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags = 0); // display a color square/button, hover for details, return true when pressed.
 }

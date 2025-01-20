@@ -1227,3 +1227,560 @@ bool SUBSTANCE::QuandInt(const char* label, const char* description, int* v0, in
 {
 	return QuandScalar(label, description, ImGuiDataType_S32, v0, v1, &v_min0, &v_max0, &v_min1, &v_max1, format0, format1, flags);
 }
+
+// ColorEdit supports RGB and HSV inputs. In case of RGB input resulting color may have undefined hue and/or saturation.
+// Since widget displays both RGB and HSV values we must preserve hue and saturation to prevent these values resetting.
+static void ColorEditRestoreHS(const float* col, float* H, float* S, float* V)
+{
+	ImGuiContext& g = *GImGui;
+	IM_ASSERT(g.ColorEditCurrentID != 0);
+	if (g.ColorEditSavedID != g.ColorEditCurrentID || g.ColorEditSavedColor != ImGui::ColorConvertFloat4ToU32(ImVec4(col[0], col[1], col[2], 0)))
+		return;
+
+	// When S == 0, H is undefined.
+	// When H == 1 it wraps around to 0.
+	if (*S == 0.0f || (*H == 0.0f && g.ColorEditSavedHue == 1))
+		*H = g.ColorEditSavedHue;
+
+	// When V == 0, S is undefined.
+	if (*V == 0.0f)
+		*S = g.ColorEditSavedSat;
+}
+
+// Note: ColorPicker4() only accesses 3 floats if ImGuiColorEditFlags_NoAlpha flag is set.
+// (In C++ the 'float col[4]' notation for a function argument is equivalent to 'float* col', we only specify a size to facilitate understanding of the code.)
+// FIXME: we adjust the big color square height based on item width, which may cause a flickering feedback loop (if automatic height makes a vertical scrollbar appears, affecting automatic width..)
+// FIXME: this is trying to be aware of style.Alpha but not fully correct. Also, the color wheel will have overlapping glitches with (style.Alpha < 1.0)
+struct picker_state
+{
+	float hue_bar;
+	float alpha_bar;
+	float circle;
+	ImVec2 circle_move;
+};
+
+bool SUBSTANCE::ColorPicker4(const char* label, float col[4], ImGuiColorEditFlags flags, const float* ref_col)
+{
+	ImGuiContext& g = *GImGui;
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImDrawList* draw_list = window->DrawList;
+	ImGuiStyle& style = g.Style;
+	ImGuiIO& io = g.IO;
+
+	const float width = ImGui::CalcItemWidth();
+	g.NextItemData.ClearFlags();
+
+	ImGui::PushID(label);
+	ImGui::BeginGroup();
+
+	if (!(flags & ImGuiColorEditFlags_NoSidePreview))
+		flags |= ImGuiColorEditFlags_NoSmallPreview;
+
+	if (!(flags & ImGuiColorEditFlags_NoOptions))
+		ImGui::ColorPickerOptionsPopup(col, flags);
+
+	// Read stored options
+	if (!(flags & ImGuiColorEditFlags_PickerMask_))
+		flags |= ((g.ColorEditOptions & ImGuiColorEditFlags_PickerMask_) ? g.ColorEditOptions : ImGuiColorEditFlags_DefaultOptions_) & ImGuiColorEditFlags_PickerMask_;
+	if (!(flags & ImGuiColorEditFlags_InputMask_))
+		flags |= ((g.ColorEditOptions & ImGuiColorEditFlags_InputMask_) ? g.ColorEditOptions : ImGuiColorEditFlags_DefaultOptions_) & ImGuiColorEditFlags_InputMask_;
+	IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_PickerMask_)); // Check that only 1 is selected
+	IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_InputMask_));  // Check that only 1 is selected
+	if (!(flags & ImGuiColorEditFlags_NoOptions))
+		flags |= (g.ColorEditOptions & ImGuiColorEditFlags_AlphaBar);
+
+	// Setup
+	const float MarginX = 15.f;
+	int components = (flags & ImGuiColorEditFlags_NoAlpha) ? 3 : 4;
+	bool alpha_bar = (flags & ImGuiColorEditFlags_AlphaBar) && !(flags & ImGuiColorEditFlags_NoAlpha);
+	ImVec2 picker_pos = ImVec2(window->DC.CursorPos.x + MarginX, window->DC.CursorPos.y);
+	ImVec2 bar_pos = window->DC.CursorPos + ImVec2(0, 85);
+	float square_sz = ImGui::GetFrameHeight();
+	//float bars_width = 209.f; // Arbitrary smallish width of Hue/Alpha picking bars
+	float bars_width = 160.f; // Arbitrary smallish width of Hue/Alpha picking bars
+	float sv_picker_size = ImMax(bars_width * 1, width - (alpha_bar ? 2 : 1) * (bars_width + style.ItemInnerSpacing.x)) + 0; // Saturation/Value picking box
+	//float sv_picker_size = bars_width; // Saturation/Value picking box
+	float sv_bar_size = 23; // Saturation/Value picking box
+	//float bar0_pos_x = GetWindowPos().x;// + style.WindowPadding.x;
+	float bar0_pos_x = ImGui::GetWindowPos().x + MarginX;
+	float bar1_pos_x = bar0_pos_x;
+	float bars_triangles_half_sz = IM_FLOOR(bars_width * 0.20f);
+
+	float backup_initial_col[4];
+	memcpy(backup_initial_col, col, components * sizeof(float));
+
+	float wheel_thickness = sv_picker_size * 0.08f;
+	float wheel_r_outer = sv_picker_size * 0.50f;
+	float wheel_r_inner = wheel_r_outer - wheel_thickness;
+	ImVec2 wheel_center(picker_pos.x + (sv_picker_size + bars_width) * 0.5f, picker_pos.y + sv_picker_size * 0.5f);
+
+	// Note: the triangle is displayed rotated with triangle_pa pointing to Hue, but most coordinates stays unrotated for logic.
+	float triangle_r = wheel_r_inner - (int)(sv_picker_size * 0.027f);
+	ImVec2 triangle_pa = ImVec2(triangle_r, 0.0f); // Hue point.
+	ImVec2 triangle_pb = ImVec2(triangle_r * -0.5f, triangle_r * -0.866025f); // Black point.
+	ImVec2 triangle_pc = ImVec2(triangle_r * -0.5f, triangle_r * +0.866025f); // White point.
+
+	float H = col[0], S = col[1], V = col[2];
+	float R = col[0], G = col[1], B = col[2];
+	if (flags & ImGuiColorEditFlags_InputRGB)
+	{
+		// Hue is lost when converting from greyscale rgb (saturation=0). Restore it.
+		ImGui::ColorConvertRGBtoHSV(R, G, B, H, S, V);
+		ColorEditRestoreHS(col, &H, &S, &V);
+	}
+	else if (flags & ImGuiColorEditFlags_InputHSV)
+	{
+		ImGui::ColorConvertHSVtoRGB(H, S, V, R, G, B);
+	}
+
+	bool value_changed = false, value_changed_h = false, value_changed_sv = false;
+
+	ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
+
+	// SV rectangle logic
+	ImGui::InvisibleButton("sv", ImVec2(sv_picker_size, sv_picker_size - 80));
+	if (ImGui::IsItemActive())
+	{
+		S = ImSaturate((io.MousePos.x - picker_pos.x) / (sv_picker_size - 1));
+		V = 1.0f - ImSaturate((io.MousePos.y - picker_pos.y) / (sv_picker_size - 80));
+
+		// Greatly reduces hue jitter and reset to 0 when hue == 255 and color is rapidly modified using SV square.
+		if (g.ColorEditSavedColor == ImGui::ColorConvertFloat4ToU32(ImVec4(col[0], col[1], col[2], 0)))
+			H = g.ColorEditSavedHue;
+		value_changed = value_changed_sv = true;
+	}
+
+	// Hue bar logic
+	ImGui::SetCursorScreenPos(ImVec2(bar0_pos_x, bar_pos.y));
+	ImGui::InvisibleButton("hue", ImVec2(bars_width, sv_bar_size));
+	if (ImGui::IsItemActive())
+	{
+		H = 1.f - ImSaturate((io.MousePos.x - bar_pos.x) / (bars_width - 1));
+		value_changed = value_changed_h = true;
+	}
+
+	// Alpha bar logic
+	if (alpha_bar)
+	{
+		ImGui::SetCursorScreenPos(ImVec2(bar1_pos_x, bar_pos.y + 16));
+		ImGui::InvisibleButton("alpha", ImVec2(bars_width, sv_bar_size));
+		if (ImGui::IsItemActive())
+		{
+			col[3] = ImSaturate((io.MousePos.x - bar_pos.x) / (bars_width - 1));
+			value_changed = true;
+		}
+	}
+	ImGui::PopItemFlag(); // ImGuiItemFlags_NoNav
+
+	// Convert back color to RGB
+	if (value_changed_h || value_changed_sv)
+	{
+		if (flags & ImGuiColorEditFlags_InputRGB)
+		{
+			ImGui::ColorConvertHSVtoRGB(H, S, V, col[0], col[1], col[2]);
+			g.ColorEditSavedHue = H;
+			g.ColorEditSavedSat = S;
+			g.ColorEditSavedColor = ImGui::ColorConvertFloat4ToU32(ImVec4(col[0], col[1], col[2], 0));
+		}
+		else if (flags & ImGuiColorEditFlags_InputHSV)
+		{
+			col[0] = H;
+			col[1] = S;
+			col[2] = V;
+		}
+	}
+
+	// R,G,B and H,S,V slider color editor
+	bool value_changed_fix_hue_wrap = false;
+
+	if (value_changed_fix_hue_wrap && (flags & ImGuiColorEditFlags_InputRGB))
+	{
+		float new_H, new_S, new_V;
+		ImGui::ColorConvertRGBtoHSV(col[0], col[1], col[2], new_H, new_S, new_V);
+		if (new_H <= 0 && H > 0)
+		{
+			if (new_V <= 0 && V != new_V)
+				ImGui::ColorConvertHSVtoRGB(H, S, new_V <= 0 ? V * 0.5f : new_V, col[0], col[1], col[2]);
+			else if (new_S <= 0)
+				ImGui::ColorConvertHSVtoRGB(H, new_S <= 0 ? S * 0.5f : new_S, new_V, col[0], col[1], col[2]);
+		}
+	}
+
+	if (value_changed)
+	{
+		if (flags & ImGuiColorEditFlags_InputRGB)
+		{
+			R = col[0];
+			G = col[1];
+			B = col[2];
+			ImGui::ColorConvertRGBtoHSV(R, G, B, H, S, V);
+			ColorEditRestoreHS(col, &H, &S, &V);   // Fix local Hue as display below will use it immediately.
+		}
+		else if (flags & ImGuiColorEditFlags_InputHSV)
+		{
+			H = col[0];
+			S = col[1];
+			V = col[2];
+			ImGui::ColorConvertHSVtoRGB(H, S, V, R, G, B);
+		}
+	}
+
+	const int style_alpha8 = IM_F32_TO_INT8_SAT(style.Alpha);
+	const ImU32 col_black = IM_COL32(0, 0, 0, style_alpha8);
+	const ImU32 col_white = IM_COL32(255, 255, 255, style_alpha8);
+	const ImU32 col_midgrey = IM_COL32(128, 128, 128, style_alpha8);
+	const ImU32 col_hues[7] = { IM_COL32(255,0,0,style_alpha8), IM_COL32(255,0,255,style_alpha8), IM_COL32(0,0,255,style_alpha8),IM_COL32(0,255,255,style_alpha8), IM_COL32(0,255,0,style_alpha8), IM_COL32(255,255,0,style_alpha8), IM_COL32(255,0,0,style_alpha8) };
+	//const ImU32 col_hues[7] = { IM_COL32(255,0,0,style_alpha8), IM_COL32(255,255,0,style_alpha8), IM_COL32(0,255,0,style_alpha8), IM_COL32(0,255,255,style_alpha8), IM_COL32(0,0,255,style_alpha8), IM_COL32(255,0,255,style_alpha8), IM_COL32(255,0,0,style_alpha8) };
+
+	ImVec4 hue_color_f(1, 1, 1, style.Alpha); ImGui::ColorConvertHSVtoRGB(H, 1, 1, hue_color_f.x, hue_color_f.y, hue_color_f.z);
+	ImU32 hue_color32 = ImGui::ColorConvertFloat4ToU32(hue_color_f);
+	ImU32 user_col32_striped_of_alpha = ImGui::ColorConvertFloat4ToU32(ImVec4(R, G, B, style.Alpha)); // Important: this is still including the main rendering/style alpha!!
+
+	ImVec2 sv_cursor_pos;
+
+	ImGui::GetWindowDrawList()->AddRectFilledMultiColor(picker_pos, picker_pos + ImVec2(sv_picker_size, sv_picker_size - 80), col_white, hue_color32, hue_color32, col_white);
+	ImGui::GetWindowDrawList()->AddRectFilledMultiColor(picker_pos, picker_pos + ImVec2(sv_picker_size, sv_picker_size - 80), 0, 0, col_black, col_black);
+	ImGui::RenderFrameBorder(picker_pos, picker_pos + ImVec2(sv_picker_size, sv_picker_size), 0.0f);
+	sv_cursor_pos.x = ImClamp(IM_ROUND(picker_pos.x + ImSaturate(S) * sv_picker_size), picker_pos.x, picker_pos.x + sv_picker_size - 2); // Sneakily prevent the circle to stick out too much
+	sv_cursor_pos.y = ImClamp(IM_ROUND(picker_pos.y + ImSaturate(1 - V) * (sv_picker_size - 80)), picker_pos.y + 2, picker_pos.y + sv_picker_size - 80);
+
+	static std::map<ImGuiID, picker_state> anim;
+	auto it_anim = anim.find(ImGui::GetID(label));
+
+	if (it_anim == anim.end())
+	{
+		anim.insert({ ImGui::GetID(label), picker_state() });
+		it_anim = anim.find(ImGui::GetID(label));
+	}
+
+	// Render Hue Bar
+	for (int i = 0; i < 6; ++i)
+		ImGui::GetWindowDrawList()->AddRectFilledMultiColor(ImVec2(bar0_pos_x + i * (bars_width / 6), bar_pos.y + 6), ImVec2(bar0_pos_x + (i + 1) * (bars_width / 6), bar_pos.y + sv_bar_size - 7), col_hues[i], col_hues[i + 1], col_hues[i + 1], col_hues[i]);
+	ImGui::GetWindowDrawList()->AddRectFilledMultiColor(ImVec2(bar0_pos_x, bar_pos.y + 6), ImVec2(bar0_pos_x + bars_width, bar_pos.y + sv_bar_size - 7), ImGui::GetColorU32(ImGuiCol_PopupBg), 0, 0, 0);
+
+	float bar0_line_x = IM_ROUND(bar_pos.x + (1.f - H) * bars_width);
+
+	bar0_line_x = ImClamp(bar0_line_x, picker_pos.x + 3.f, picker_pos.x + 204.f);
+
+	it_anim->second.hue_bar = ImLerp(it_anim->second.hue_bar, bar0_line_x - bar_pos.x, g.IO.DeltaTime * 20.f);
+
+	ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(it_anim->second.hue_bar + bar_pos.x - 3, bar_pos.y + 3), ImVec2(it_anim->second.hue_bar + bar_pos.x + 5, bar_pos.y + 19), ImColor(255, 255, 255, 255), 30.f);
+
+	it_anim->second.circle_move = ImLerp(it_anim->second.circle_move, sv_cursor_pos - bar_pos, g.IO.DeltaTime * 20.f);
+	it_anim->second.circle = ImLerp(it_anim->second.circle, value_changed_sv ? 4.f : 7.f, g.IO.DeltaTime * 20.f);
+
+	ImGui::GetWindowDrawList()->AddCircleFilled(it_anim->second.circle_move + bar_pos, it_anim->second.circle, user_col32_striped_of_alpha, 32);
+	ImGui::GetWindowDrawList()->AddCircle(it_anim->second.circle_move + bar_pos + ImVec2(0, 1), it_anim->second.circle, IM_COL32(50, 50, 50, 150 * g.Style.Alpha), 32);
+	ImGui::GetWindowDrawList()->AddCircle(it_anim->second.circle_move + bar_pos, it_anim->second.circle, IM_COL32(230, 230, 230, 255 * g.Style.Alpha), 32);
+
+	if (alpha_bar)
+	{
+		float alpha = ImSaturate(col[3]);
+		ImRect bar1_bb(bar1_pos_x, bar_pos.y + 20, bar1_pos_x + bars_width, bar_pos.y + 20 + sv_bar_size);
+
+		ImGui::RenderColorRectWithAlphaCheckerboard(draw_list, bar1_bb.Min + ImVec2(0, 8), bar1_bb.Max - ImVec2(0, 5), 0, bar1_bb.GetWidth() / 50.0f, ImVec2(0.0f, 0.0f));
+
+		ImGui::GetWindowDrawList()->AddRectFilledMultiColor(bar1_bb.Min + ImVec2(0, 8), bar1_bb.Max - ImVec2(0, 5), user_col32_striped_of_alpha & ~IM_COL32_A_MASK, user_col32_striped_of_alpha, user_col32_striped_of_alpha, user_col32_striped_of_alpha & ~IM_COL32_A_MASK);
+		ImGui::GetWindowDrawList()->AddRectFilledMultiColor(bar1_bb.Min + ImVec2(0, 8), bar1_bb.Max - ImVec2(0, 5), ImGui::GetColorU32(ImGuiCol_PopupBg), 0, 0, 0);
+		float bar1_line_x = IM_ROUND(bar_pos.x + alpha * bars_width);
+
+		bar1_line_x = ImClamp(bar1_line_x, bar_pos.x, picker_pos.x + 200.f);
+		it_anim->second.alpha_bar = ImLerp(it_anim->second.alpha_bar, bar1_line_x - bar_pos.x/* + 5.f*/, g.IO.DeltaTime * 25.f);
+		ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(it_anim->second.alpha_bar + bar_pos.x, bar1_bb.Min.y + 13.0f), 6, IM_COL32(255, 255, 255, 255), 100.f);
+	}
+
+	ImGui::EndGroup();
+
+	if (value_changed && memcmp(backup_initial_col, col, components * sizeof(float)) == 0)
+		value_changed = false;
+	if (value_changed)
+		ImGui::MarkItemEdited(g.LastItemData.ID);
+
+	ImGui::PopID();
+
+	ImGui::Dummy(ImVec2(0.f, 8.f));
+
+	return value_changed;
+}
+
+bool SUBSTANCE::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags)
+{
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	const ImVec4 text_active = ImColor(255, 255, 255);
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const float square_sz = ImGui::GetFrameHeight();
+	const float w_full = ImGui::CalcItemWidth();
+	const float w_button = (flags & ImGuiColorEditFlags_NoSmallPreview) ? 0.0f : (square_sz + style.ItemInnerSpacing.x);
+	const float w_inputs = w_full - w_button;
+	const char* label_display_end = ImGui::FindRenderedTextEnd(label);
+	const ImVec4 background = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
+	g.NextItemData.ClearFlags();
+
+
+	ImGui::BeginGroup();
+	ImGui::PushID(label);
+	const bool set_current_color_edit_id = (g.ColorEditCurrentID == 0);
+	if (set_current_color_edit_id)
+		g.ColorEditCurrentID = window->IDStack.back();
+
+	// If we're not showing any slider there's no point in doing any HSV conversions
+	const ImGuiColorEditFlags flags_untouched = flags;
+	if (flags & ImGuiColorEditFlags_NoInputs)
+		flags = (flags & (~ImGuiColorEditFlags_DisplayMask_)) | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_NoOptions;
+
+	// Context menu: display and modify options (before defaults are applied)
+	if (!(flags & ImGuiColorEditFlags_NoOptions))
+		ImGui::ColorEditOptionsPopup(col, flags);
+
+	// Read stored options
+	if (!(flags & ImGuiColorEditFlags_DisplayMask_))
+		flags |= (g.ColorEditOptions & ImGuiColorEditFlags_DisplayMask_);
+	if (!(flags & ImGuiColorEditFlags_DataTypeMask_))
+		flags |= (g.ColorEditOptions & ImGuiColorEditFlags_DataTypeMask_);
+	if (!(flags & ImGuiColorEditFlags_PickerMask_))
+		flags |= (g.ColorEditOptions & ImGuiColorEditFlags_PickerMask_);
+	if (!(flags & ImGuiColorEditFlags_InputMask_))
+		flags |= (g.ColorEditOptions & ImGuiColorEditFlags_InputMask_);
+	flags |= (g.ColorEditOptions & ~(ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_));
+	IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_DisplayMask_)); // Check that only 1 is selected
+	IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_InputMask_));   // Check that only 1 is selected
+
+	const bool alpha = (flags & ImGuiColorEditFlags_NoAlpha) == 0;
+	const bool hdr = (flags & ImGuiColorEditFlags_HDR) != 0;
+	const int components = alpha ? 4 : 3;
+
+	// Convert to the formats we need
+	float f[4] = { col[0], col[1], col[2], alpha ? col[3] : 1.0f };
+	if ((flags & ImGuiColorEditFlags_InputHSV) && (flags & ImGuiColorEditFlags_DisplayRGB))
+		ImGui::ColorConvertHSVtoRGB(f[0], f[1], f[2], f[0], f[1], f[2]);
+	else if ((flags & ImGuiColorEditFlags_InputRGB) && (flags & ImGuiColorEditFlags_DisplayHSV))
+	{
+		// Hue is lost when converting from grayscale rgb (saturation=0). Restore it.
+		ImGui::ColorConvertRGBtoHSV(f[0], f[1], f[2], f[0], f[1], f[2]);
+		ColorEditRestoreHS(col, &f[0], &f[1], &f[2]);
+	}
+	int i[4] = { IM_F32_TO_INT8_UNBOUND(f[0]), IM_F32_TO_INT8_UNBOUND(f[1]), IM_F32_TO_INT8_UNBOUND(f[2]), IM_F32_TO_INT8_UNBOUND(f[3]) };
+
+	bool value_changed = false;
+	bool value_changed_as_float = false;
+
+	const ImVec2 pos = window->DC.CursorPos;
+	const float inputs_offset_x = (style.ColorButtonPosition == ImGuiDir_Left) ? w_button : 0.0f;
+	window->DC.CursorPos.x = pos.x + inputs_offset_x;
+
+	if ((flags & (ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_DisplayHSV)) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
+	{
+		// RGB/HSV 0..255 Sliders
+		const float w_item_one = ImMax(1.0f, IM_FLOOR((w_inputs - (style.ItemInnerSpacing.x) * (components - 1)) / (float)components));
+		const float w_item_last = ImMax(1.0f, IM_FLOOR(w_inputs - (w_item_one + style.ItemInnerSpacing.x) * (components - 1)));
+
+		const bool hide_prefix = (w_item_one <= ImGui::CalcTextSize((flags & ImGuiColorEditFlags_Float) ? "M:0.000" : "M:000").x);
+		static const char* ids[4] = { "##X", "##Y", "##Z", "##W" };
+		static const char* fmt_table_int[3][4] =
+		{
+			{   "%3d",   "%3d",   "%3d",   "%3d" }, // Short display
+			{ "R:%3d", "G:%3d", "B:%3d", "A:%3d" }, // Long display for RGBA
+			{ "H:%3d", "S:%3d", "V:%3d", "A:%3d" }  // Long display for HSVA
+		};
+		static const char* fmt_table_float[3][4] =
+		{
+			{   "%0.3f",   "%0.3f",   "%0.3f",   "%0.3f" }, // Short display
+			{ "R:%0.3f", "G:%0.3f", "B:%0.3f", "A:%0.3f" }, // Long display for RGBA
+			{ "H:%0.3f", "S:%0.3f", "V:%0.3f", "A:%0.3f" }  // Long display for HSVA
+		};
+		const int fmt_idx = hide_prefix ? 0 : (flags & ImGuiColorEditFlags_DisplayHSV) ? 2 : 1;
+
+		for (int n = 0; n < components; n++)
+		{
+			if (n > 0)
+				ImGui::SameLine(0, style.ItemInnerSpacing.x);
+			ImGui::SetNextItemWidth((n + 1 < components) ? w_item_one : w_item_last);
+
+			// FIXME: When ImGuiColorEditFlags_HDR flag is passed HS values snap in weird ways when SV values go below 0.
+			if (flags & ImGuiColorEditFlags_Float)
+			{
+				value_changed |= ImGui::DragFloat(ids[n], &f[n], 1.0f / 255.0f, 0.0f, hdr ? 0.0f : 1.0f, fmt_table_float[fmt_idx][n]);
+				value_changed_as_float |= value_changed;
+			}
+			else
+			{
+				value_changed |= ImGui::DragInt(ids[n], &i[n], 1.0f, 0, hdr ? 0 : 255, fmt_table_int[fmt_idx][n]);
+			}
+			if (!(flags & ImGuiColorEditFlags_NoOptions))
+				ImGui::OpenPopupOnItemClick("context", ImGuiPopupFlags_MouseButtonRight);
+		}
+	}
+	else if ((flags & ImGuiColorEditFlags_DisplayHex) != 0 && (flags & ImGuiColorEditFlags_NoInputs) == 0)
+	{
+		// RGB Hexadecimal Input
+		char buf[64];
+		if (alpha)
+			ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X%02X", ImClamp(i[0], 0, 255), ImClamp(i[1], 0, 255), ImClamp(i[2], 0, 255), ImClamp(i[3], 0, 255));
+		else
+			ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp(i[0], 0, 255), ImClamp(i[1], 0, 255), ImClamp(i[2], 0, 255));
+		ImGui::SetNextItemWidth(w_inputs);
+		if (ImGui::InputText("##Text", buf, IM_ARRAYSIZE(buf), ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase))
+		{
+			value_changed = true;
+			char* p = buf;
+			while (*p == '#' || ImCharIsBlankA(*p))
+				p++;
+			i[0] = i[1] = i[2] = 0;
+			i[3] = 0xFF; // alpha default to 255 is not parsed by scanf (e.g. inputting #FFFFFF omitting alpha)
+			int r;
+			if (alpha)
+				r = sscanf(p, "%02X%02X%02X%02X", (unsigned int*)&i[0], (unsigned int*)&i[1], (unsigned int*)&i[2], (unsigned int*)&i[3]); // Treat at unsigned (%X is unsigned)
+			else
+				r = sscanf(p, "%02X%02X%02X", (unsigned int*)&i[0], (unsigned int*)&i[1], (unsigned int*)&i[2]);
+			IM_UNUSED(r); // Fixes C6031: Return value ignored: 'sscanf'.
+		}
+		if (!(flags & ImGuiColorEditFlags_NoOptions))
+			ImGui::OpenPopupOnItemClick("context", ImGuiPopupFlags_MouseButtonRight);
+	}
+
+	ImGuiWindow* picker_active_window = NULL;
+	if (!(flags & ImGuiColorEditFlags_NoSmallPreview))
+	{
+		const float button_offset_x = ((flags & ImGuiColorEditFlags_NoInputs) || (style.ColorButtonPosition == ImGuiDir_Left)) ? 0.0f : w_inputs + style.ItemInnerSpacing.x;
+		window->DC.CursorPos = ImVec2(pos.x + button_offset_x, pos.y);
+
+		const ImVec4 col_v4(col[0], col[1], col[2], alpha ? col[3] : 1.0f);
+		/*
+		if (ColorButton("##ColorButton", col_v4, flags))
+		{
+			if (!(flags & ImGuiColorEditFlags_NoPicker))
+			{
+				// Store current color and open a picker
+				g.ColorPickerRef = col_v4;
+				OpenPopup("picker");
+				SetNextWindowPos(g.LastItemData.Rect.GetBL() + ImVec2(0.0f, style.ItemSpacing.y));
+			}
+		}
+		*/
+		if (!(flags & ImGuiColorEditFlags_NoOptions))
+			ImGui::OpenPopupOnItemClick("context", ImGuiPopupFlags_MouseButtonRight);
+
+		//PushStyleColor(ImGuiCol_PopupBg, GetColorU32(c::child::background));
+		//PushStyleColor(ImGuiCol_Border, GetColorU32(c::picker::outline));
+
+		//PushStyleVar(ImGuiStyleVar_PopupRounding, c::picker::rounding);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(5, 5));
+
+		//if (BeginPopup("picker"))
+		{
+			if (g.CurrentWindow->BeginCount == 1)
+			{
+				picker_active_window = g.CurrentWindow;
+				ImGui::GetWindowDrawList()->AddRectFilled(pos, pos + ImVec2(190.f, 175.f), ImColor(background));
+
+				ImGui::Dummy(ImVec2(0, 5.f));
+				ImGui::Dummy(ImVec2(8.f, 0.f));
+				ImGui::SameLine();
+				ImGui::BeginGroup();
+
+				float wrapPos = 190.f - 15.f;
+				//ImGui::PushTextWrapPos(wrapPos);
+				ImGui::PushFont(SUBSTANCE::pFont15);
+				ImGui::Text(label);
+				ImGui::PopFont();
+				ImGui::PushFont(SUBSTANCE::pFont10Light);
+				//ImGui::TextWrapped("Description sample Description sample Description sample");
+				ImGui::Text("Description sample");
+				ImGui::PopFont();
+				ImGui::EndGroup();
+
+				ImGuiColorEditFlags picker_flags_to_forward = ImGuiColorEditFlags_DataTypeMask_ | ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_ | ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_AlphaBar;
+				ImGuiColorEditFlags picker_flags = (flags_untouched & picker_flags_to_forward) | ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaPreviewHalf;
+				//SetNextItemWidth(square_sz * 12.0f); // Use 256 + bar sizes?
+				//SetNextItemWidth(100.f); // Use 256 + bar sizes?
+				value_changed |= SUBSTANCE::ColorPicker4("##picker", col, picker_flags, &g.ColorPickerRef.x);
+			}
+			//EndPopup();
+		}
+		//PopStyleColor(2);
+		//PopStyleVar(2);
+		ImGui::PopStyleVar();
+	}
+
+	/*
+	if (label != label_display_end && !(flags & ImGuiColorEditFlags_NoLabel))
+	{
+		char buf[64];
+
+		SameLine(0.0f, style.ItemInnerSpacing.x);
+		window->DC.CursorPos.x = pos.x - w_button + ((flags & ImGuiColorEditFlags_NoInputs) ? w_button : w_full);
+
+		ImGui::GetWindowDrawList()->AddText(window->DC.CursorPos + ImVec2(0, 0), GetColorU32(text_active), label);
+
+		ImFormatString(buf, IM_ARRAYSIZE(buf), "#%02X%02X%02X", ImClamp(i[0], 0, 255), ImClamp(i[1], 0, 255), ImClamp(i[2], 0, 255));
+	}
+	*/
+
+	// Convert back
+	if (value_changed && picker_active_window == NULL)
+	{
+		if (!value_changed_as_float)
+			for (int n = 0; n < 4; n++)
+				f[n] = i[n] / 255.0f;
+		if ((flags & ImGuiColorEditFlags_DisplayHSV) && (flags & ImGuiColorEditFlags_InputRGB))
+		{
+			g.ColorEditSavedHue = f[0];
+			g.ColorEditSavedSat = f[1];
+			ImGui::ColorConvertHSVtoRGB(f[0], f[1], f[2], f[0], f[1], f[2]);
+			g.ColorEditSavedID = g.ColorEditCurrentID;
+			g.ColorEditSavedColor = ImGui::ColorConvertFloat4ToU32(ImVec4(f[0], f[1], f[2], 0));
+		}
+		if ((flags & ImGuiColorEditFlags_DisplayRGB) && (flags & ImGuiColorEditFlags_InputHSV))
+			ImGui::ColorConvertRGBtoHSV(f[0], f[1], f[2], f[0], f[1], f[2]);
+
+		col[0] = f[0];
+		col[1] = f[1];
+		col[2] = f[2];
+		if (alpha)
+			col[3] = f[3];
+	}
+
+	if (set_current_color_edit_id)
+		g.ColorEditCurrentID = 0;
+	ImGui::PopID();
+	ImGui::EndGroup();
+
+	// Drag and Drop Target
+	// NB: The flag test is merely an optional micro-optimization, BeginDragDropTarget() does the same test.
+	if ((g.LastItemData.StatusFlags & ImGuiItemStatusFlags_HoveredRect) && !(flags & ImGuiColorEditFlags_NoDragDrop) && ImGui::BeginDragDropTarget())
+	{
+		bool accepted_drag_drop = false;
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_3F))
+		{
+			memcpy((float*)col, payload->Data, sizeof(float) * 3); // Preserve alpha if any //-V512 //-V1086
+			value_changed = accepted_drag_drop = true;
+		}
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_4F))
+		{
+			memcpy((float*)col, payload->Data, sizeof(float) * components);
+			value_changed = accepted_drag_drop = true;
+		}
+
+		// Drag-drop payloads are always RGB
+		if (accepted_drag_drop && (flags & ImGuiColorEditFlags_InputHSV))
+			ImGui::ColorConvertRGBtoHSV(col[0], col[1], col[2], col[0], col[1], col[2]);
+		ImGui::EndDragDropTarget();
+	}
+
+	// When picker is being actively used, use its active id so IsItemActive() will function on ColorEdit4().
+	if (picker_active_window && g.ActiveId != 0 && g.ActiveIdWindow == picker_active_window)
+		g.LastItemData.ID = g.ActiveId;
+
+	if (value_changed && g.LastItemData.ID != 0) // In case of ID collision, the second EndGroup() won't catch g.ActiveId
+		ImGui::MarkItemEdited(g.LastItemData.ID);
+
+	return value_changed;
+}
