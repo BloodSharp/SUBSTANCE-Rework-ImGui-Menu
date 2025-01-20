@@ -1140,7 +1140,14 @@ void CombatLeftSection()
 
 void CombatRightSection()
 {
+    static int opcion = 0;
     ImGui::BeginGroup();
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
+    SUBSTANCE::ComboBox("Combobox##ID_10", "Combobox ejemplo", &opcion, "Uno\0Dos\0\Tres\0\0");
     SUBSTANCE::CheckBox("Ejemplo##ID_TRES", "Ejemplo3", &bEjemplo3);
     SUBSTANCE::CheckBox("Ejemplo##ID_CUATRO", "Ejemplo4", &bEjemplo4);
     SUBSTANCE::CheckBox("Ejemplo##ID_SEIS", "Ejemplo5", &bEjemplo5);

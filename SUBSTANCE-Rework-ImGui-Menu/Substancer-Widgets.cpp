@@ -414,8 +414,8 @@ bool SUBSTANCE::ComboBox(const char* szTextAndAlsoID, const char* szDescription,
 	ImGui::PopTextWrapPos();
 
 	// Posición del ComboBox
-	float comboBoxY = localMax.y - ComboBoxMargin - textLineHeight;
-	ImGui::SetCursorPos(ImVec2(localMin.x + MarginX, comboBoxY));
+	float comboBoxY = widgetMax.y - ComboBoxMargin - textLineHeight;
+	ImGui::SetCursorScreenPos(ImVec2(widgetMin.x + MarginX, comboBoxY));
 	ImGui::PushItemWidth(Size.x - (2.0f * MarginX));
 
 	// Estilos del ComboBox
